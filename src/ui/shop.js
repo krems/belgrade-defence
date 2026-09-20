@@ -2,7 +2,7 @@ import { PLANTS, PLANT_KEYS, ECONOMY } from '../balance.js';
 import { drawPlantShape } from '../render.js';
 import { showTooltip, hideTooltip } from './hud.js';
 
-const PLANT_HOTKEYS = ['1', '2', '3', '4', '5', '6'];
+const PLANT_HOTKEYS = Array.from({ length: PLANT_KEYS.length }, (_, i) => String(i + 1));
 
 let shovelCard = null;
 let cards = new Map();
@@ -10,7 +10,9 @@ let cards = new Map();
 function statLines(def) {
   const lines = [];
   if (def.dmg && def.rate) lines.push(`Урон ${def.dmg} · ${def.rate}/с · радиус ${def.range}`);
-  if (def.dps && def.slow) lines.push(`Аура ${def.range}: −${Math.round(def.slow * 100)}% скорости, ${def.dps} урона/с`);
+  if (def.antiAir) lines.push('Сбивает только летающих зомби');
+  if (def.dps && def.slow && !def.onRoad) lines.push(`Аура ${def.range}: −${Math.round(def.slow * 100)}% скорости, ${def.dps} урона/с`);
+  if (def.dps && def.slow && def.onRoad) lines.push(`${def.dps} урона/с · замедление −${Math.round(def.slow * 100)}% · износ ${def.hp}`);
   if (def.splash) lines.push(`${def.dmg} урона · площадь ${def.splash} · перезарядка ${def.cooldown} с · дальность ${def.rangeMin}–${def.rangeMax}`);
   if (def.hp && def.onRoad && def.key === 'nut') lines.push(`Прочность ${def.hp} · грызутся 25/с`);
   if (def.dps && def.onRoad && def.key === 'cactus') lines.push(`${def.dps} урона/с · износ ${def.hp}`);

@@ -2,13 +2,13 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { GRID, PLANTS, FIXED_DT } from '../src/balance.js';
-import { createGame, step, startWave, placeAt } from '../src/state.js';
+import { GRID, PLANTS, PLANT_KEYS, FIXED_DT } from '../src/balance.js';
+import { createGame, step, startWave, placeAt, digAt } from '../src/state.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIG_PATH = join(ROOT, 'src', 'config.js');
 
-const ALL_PLANTS = ['pea', 'frost', 'mortar', 'nut', 'cactus', 'coin'];
+const ALL_PLANTS = [...PLANT_KEYS];
 
 const VOROTA_WAYPOINTS = [
   [-1, 2], [1, 2], [1, 6], [4, 6], [4, 2], [7, 2], [7, 6], [10, 6], [10, 3], [13, 3],
@@ -17,48 +17,50 @@ const VOROTA_SLOTS = [
   [0, 1], [0, 4], [2, 2], [2, 5], [3, 2], [3, 4],
   [5, 4], [6, 1], [8, 2], [8, 5], [9, 5],
   [10, 2], [11, 2], [11, 4],
+  // добор под босса 5000 HP: укрытия в конце змеевика, где прежних слотов не хватало
+  [9, 4], [9, 3], [11, 5], [12, 2],
 ];
 
 const SPECS = [
   {
     id: 'okraina', name: 'Окраина', seed: 1001,
-    blurb: 'Обучение: прямой S-путь, много полянок.',
+    blurb: 'Обучение: прямой S-путь, только обычные зомби.',
     waves: 8, slots: 16, startCoins: 150, cityHp: 10, hpScalePerWave: 0.08,
     unlockedPlants: ['pea', 'nut'],
     road: { kind: 'S' },
-    waveOpts: { grow: 0.5, runnerFrom: 4, armoredFrom: Infinity, bossWaves: [] },
+    waveOpts: { grow: 0.5, runnerFrom: Infinity, armoredFrom: Infinity, flyerFrom: Infinity, bossWaves: [] },
   },
   {
     id: 'most', name: 'Мост', seed: 2002,
-    blurb: 'Петля у моста: идти долго, но полянок мало.',
+    blurb: 'Петля у моста, полянок мало. Появляются быстрые бегуны.',
     waves: 10, slots: 11, startCoins: 150, cityHp: 10, hpScalePerWave: 0.09,
-    unlockedPlants: ['pea', 'frost', 'nut', 'cactus'],
+    unlockedPlants: ['pea', 'nut', 'frost', 'cactus'],
     road: { kind: 'loop' },
-    waveOpts: { grow: 0.55, runnerFrom: 3, armoredFrom: 6, bossWaves: [] },
+    waveOpts: { grow: 0.55, runnerFrom: 3, armoredFrom: Infinity, flyerFrom: Infinity, bossWaves: [] },
   },
   {
     id: 'park', name: 'Парк', seed: 3003,
-    blurb: 'Двойной фронт: дорога проходит дважды рядом.',
+    blurb: 'Двойной фронт: появляются броневики, монетник и липучки.',
     waves: 12, slots: 13, startCoins: 150, cityHp: 10, hpScalePerWave: 0.1,
-    unlockedPlants: ALL_PLANTS,
+    unlockedPlants: ['pea', 'nut', 'frost', 'cactus', 'mortar', 'trap', 'coin'],
     road: { kind: 'double' },
-    waveOpts: { grow: 0.6, runnerFrom: 3, armoredFrom: 5, bossWaves: [] },
+    waveOpts: { grow: 0.6, runnerFrom: 3, armoredFrom: 5, flyerFrom: Infinity, bossWaves: [] },
   },
   {
     id: 'ulicy', name: 'Улицы', seed: 4004,
-    blurb: 'Короткий путь — времени на урон в обрез.',
+    blurb: 'Короткий путь: летающие зомби — без зенитников не выжить.',
     waves: 14, slots: 12, startCoins: 175, cityHp: 10, hpScalePerWave: 0.1,
     unlockedPlants: ALL_PLANTS,
     road: { kind: 'short' },
-    waveOpts: { grow: 0.55, runnerFrom: 3, armoredFrom: 4, bossWaves: [] },
+    waveOpts: { grow: 0.55, runnerFrom: 3, armoredFrom: 4, flyerFrom: 3, bossWaves: [] },
   },
   {
     id: 'vorota-belgrada', name: 'Ворота Белграда', seed: 5005,
-    blurb: 'Длинный змеевик у самых ворот. 15 волн и БОСС.',
+    blurb: 'Длинный змеевик у самых ворот. 15 волн и БОСС (5000 HP).',
     waves: 15, slots: 14, startCoins: 150, cityHp: 10, hpScalePerWave: 0.1,
     unlockedPlants: ALL_PLANTS,
     road: { kind: 'fixed', waypoints: VOROTA_WAYPOINTS, slots: VOROTA_SLOTS },
-    waveOpts: { grow: 0.6, runnerFrom: 3, armoredFrom: 5, bossWaves: [15] },
+    waveOpts: { grow: 0.6, runnerFrom: 3, armoredFrom: 5, flyerFrom: 4, bossWaves: [15] },
   },
 ];
 
@@ -190,6 +192,14 @@ function draftWaves(rng, waveCount, opts) {
         delay: 8 + Math.floor(rng() * 4),
       });
     }
+    if (w >= opts.flyerFrom) {
+      entries.push({
+        type: 'flyer',
+        count: Math.max(1, Math.round((w - opts.flyerFrom + 1) * 0.8)),
+        every: r2(Math.max(1.6, 2.8 - w * 0.05)),
+        delay: 5 + Math.floor(rng() * 3),
+      });
+    }
     if (opts.bossWaves.includes(w)) {
       entries.unshift({ type: 'boss', count: 1, every: 1, delay: 6 });
     }
@@ -263,35 +273,60 @@ function botStep(g, ctx) {
     return best;
   };
   const buy = (t, cell) => (cell ? placeAt(g, cell[0], cell[1], t) : false);
+  // Покупка не должна обрывать цепочку, если конкретный слот не нашёлся:
+  // иначе бот застревает (слоты кончились — и дорогие растения тоже не куплены).
+  const tryBuy = (t, frac, place) => buy(t, (place ?? slotAt)(frac));
 
-  if (cnt('pea') < 2) return buy('pea', slotAt(0.12));
+  // Перед боссовой волной зенитники бесполезны (по боссу не стреляют) —
+  // перекапываем их в горохострелы, как сделал бы игрок.
+  const nextWave = g.waves[g.waveIndex];
+  const bossWaveNext = Boolean(nextWave && nextWave.some((e) => e.type === 'boss'));
+  if (bossWaveNext) {
+    const spareAa = g.plants.find((p) => p.type === 'aa' && !p.dead);
+    if (spareAa) {
+      digAt(g, spareAa.col, spareAa.row);
+      return true;
+    }
+    if (cnt('mortar') < 3 && g.coins >= PLANTS.mortar.cost + 50
+      && tryBuy('mortar', 0.7)) return true;
+    // Перед последней волной доход не нужен — монетники становятся горохострелами.
+    if (g.coins >= 300) {
+      const spareCoin = g.plants.find((p) => p.type === 'coin' && !p.dead);
+      if (spareCoin) {
+        digAt(g, spareCoin.col, spareCoin.row);
+        return true;
+      }
+    }
+  }
+
+  if (cnt('pea') < 2 && tryBuy('pea', 0.12)) return true;
   const coinCap = g.waves.length >= 14 ? 3 : 2;
   if (unlocked.has('coin') && cnt('coin') < Math.min(coinCap, 1 + Math.floor(g.waveIndex / 2))
-    && g.coins >= PLANTS.coin.cost + PLANTS.pea.cost) {
-    return buy('coin', slotAt(0.55));
-  }
-  if (unlocked.has('frost') && cnt('frost') < 2 && g.waveIndex >= 1 && g.coins >= PLANTS.frost.cost + 50) {
-    return buy('frost', slotAt(0.45));
-  }
-  if (unlocked.has('mortar') && cnt('mortar') < 2 && g.waveIndex >= 3 && g.coins >= PLANTS.mortar.cost + 50) {
-    return buy('mortar', slotAt(0.7));
-  }
-  if (unlocked.has('cactus') && cnt('cactus') < 2 && g.waveIndex >= 2 && g.coins >= PLANTS.cactus.cost + 50) {
-    return buy('cactus', roadAt(0.5));
-  }
+    && g.coins >= PLANTS.coin.cost + PLANTS.pea.cost
+    && tryBuy('coin', 0.55)) return true;
+  // Зенитник — приоритет на уровнях с летающими (Улицы, Ворота): обычные стрелки по ним не попадают.
+  if (!bossWaveNext && unlocked.has('aa') && cnt('aa') < 3 && g.waveIndex >= 1 && g.coins >= PLANTS.aa.cost + 20
+    && tryBuy('aa', 0.3)) return true;
+  if (unlocked.has('frost') && cnt('frost') < 2 && g.waveIndex >= 1 && g.coins >= PLANTS.frost.cost + 50
+    && tryBuy('frost', 0.45)) return true;
+  if (unlocked.has('mortar') && cnt('mortar') < 2 && g.waveIndex >= 3 && g.coins >= PLANTS.mortar.cost + 50
+    && tryBuy('mortar', 0.7)) return true;
+  if (unlocked.has('cactus') && cnt('cactus') < 2 && g.waveIndex >= 2 && g.coins >= PLANTS.cactus.cost + 50
+    && tryBuy('cactus', 0.5, roadAt)) return true;
+  if (unlocked.has('trap') && cnt('trap') < 2 && g.waveIndex >= 2 && g.coins >= PLANTS.trap.cost + 50
+    && tryBuy('trap', 0.55, roadAt)) return true;
   if (unlocked.has('nut') && (ctx.lastLeaks > 0 || g.waveIndex >= 3) && cnt('nut') < 2
-    && g.coins >= PLANTS.nut.cost + 40) {
-    return buy('nut', cnt('nut') === 0 ? roadAt(0.85) : roadAt(0.65));
-  }
-  if (cnt('pea') < 8 && g.coins >= PLANTS.pea.cost) {
-    return buy('pea', cnt('pea') % 2 === 0 ? slotAt(0.25) : slotAt(0.8));
-  }
-  if (unlocked.has('cactus') && cnt('cactus') < 3 && g.coins >= PLANTS.cactus.cost) {
-    return buy('cactus', roadAt(0.35));
-  }
-  if (unlocked.has('nut') && cnt('nut') < 3 && g.coins >= PLANTS.nut.cost) {
-    return buy('nut', roadAt(0.5));
-  }
+    && g.coins >= PLANTS.nut.cost + 40
+    && tryBuy('nut', cnt('nut') === 0 ? 0.85 : 0.65, roadAt)) return true;
+  if (cnt('pea') < 8 && g.coins >= PLANTS.pea.cost
+    && (cnt('mortar') >= 2 || cnt('pea') < 4) // резервируем 2 слота под мортирки
+    && tryBuy('pea', cnt('pea') % 2 === 0 ? 0.25 : 0.8)) return true;
+  if (unlocked.has('cactus') && cnt('cactus') < 3 && g.coins >= PLANTS.cactus.cost
+    && tryBuy('cactus', 0.35, roadAt)) return true;
+  if (unlocked.has('nut') && cnt('nut') < 3 && g.coins >= PLANTS.nut.cost
+    && tryBuy('nut', 0.5, roadAt)) return true;
+  if (!bossWaveNext && unlocked.has('aa') && cnt('aa') < 4 && g.coins >= PLANTS.aa.cost
+    && tryBuy('aa', 0.5)) return true;
   return false;
 }
 
@@ -307,9 +342,11 @@ function runLevel(def, mode, rngSeed) {
     };
     if (mode === 'full') {
       g.coins = 1e9;
+      // aa обязателен там, где есть летающие: обычные стрелки по ним не попадают
+      const hasFlyers = def.waves.some((w) => w.some((e) => e.type === 'flyer'));
       let i = 0;
       for (const [c, r] of def.slotCells) {
-        placeAt(g, c, r, i % 3 === 2 ? 'frost' : 'pea');
+        placeAt(g, c, r, hasFlyers && i % 3 === 1 ? 'aa' : i % 3 === 2 ? 'frost' : 'pea');
         i++;
       }
     }
@@ -343,14 +380,15 @@ function autobalance(spec, base) {
   let waves = draftWaves(rng, spec.waves, spec.waveOpts);
   let best = null;
   let iterations = 0;
-  for (let iter = 0; iter < 14; iter++) {
+  for (let iter = 0; iter < 18; iter++) {
     iterations = iter + 1;
     const honest = runLevel({ ...base, waves }, 'honest', spec.seed + iter * 131 + 7);
     const cand = { waves, honest, leak: spec.cityHp - honest.cityHp };
     if (!best || score(cand) > score(best)) best = cand;
     if (honest.result === 'win' && cand.leak >= 1 && cand.leak <= 2) break;
     if (honest.result === 'win' && cand.leak === 0) waves = scaleWaves(waves, 1.12, 0.94, 'thicken');
-    else waves = scaleWaves(waves, 0.8, 1.1, 'thin');
+    else if (honest.result === 'win') waves = scaleWaves(waves, 0.9, 1.06, 'thin');
+    else waves = scaleWaves(waves, 0.75, 1.15, 'thin');
   }
   return { waves: best.waves, report: { iterations, ...best } };
 }
@@ -500,4 +538,6 @@ function main() {
   console.log('\nВсе уровни: full-board win, honest win, без растений lose.');
 }
 
-main();
+export { runLevel, botStep, makeRoadProgress, makeSlotProgress, SPECS, draftWaves };
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) main();

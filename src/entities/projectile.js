@@ -3,13 +3,14 @@ import { fx } from '../fx.js';
 import { audio } from '../audio.js';
 
 export class Bullet {
-  constructor(x, y, angle, dmg, target) {
+  constructor(x, y, angle, dmg, target, only = null) {
     this.x = x;
     this.y = y;
     this.vx = Math.cos(angle) * BULLET_SPEED;
     this.vy = Math.sin(angle) * BULLET_SPEED;
     this.dmg = dmg;
     this.target = target;
+    this.only = only;
     this.life = 2.5;
     this.dead = false;
   }
@@ -33,17 +34,33 @@ export class Bullet {
     let best = Infinity;
     for (const z of g.zombies) {
       if (z.dead || z.state === 'die') continue;
+      if (this.only ? z.type !== this.only : z.def.flying) continue;
       const d = Math.hypot(z.x - this.x, z.y - this.y);
       if (d < z.def.radius + 5 && d < best) { best = d; hit = z; }
     }
     if (hit) {
       this.dead = true;
-      hit.damage(g, this.dmg, { color: '#eaffd0' });
-      fx.splat(g, this.x, this.y);
+      hit.damage(g, this.dmg, { color: this.only ? '#ffe08a' : '#eaffd0' });
+      fx.splat(g, this.x, this.y, this.only ? '#ffd54a' : undefined);
       audio.hit();
     }
   }
   draw(ctx) {
+    if (this.only) {
+      ctx.fillStyle = '#ffd54a';
+      ctx.strokeStyle = '#a8821a';
+      ctx.lineWidth = 1.2;
+      const a = Math.atan2(this.vy, this.vx);
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(a);
+      ctx.beginPath();
+      ctx.roundRect(-6, -1.6, 12, 3.2, 1.6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
     ctx.fillStyle = '#8fd94a';
     ctx.strokeStyle = '#4c7a2a';
     ctx.lineWidth = 1.5;
@@ -72,7 +89,7 @@ export class MortarShell {
     fx.shake(g, 6, 0.28);
     audio.explosion();
     for (const z of g.zombies) {
-      if (z.dead || z.state === 'die') continue;
+      if (z.dead || z.state === 'die' || z.def.flying) continue;
       if (Math.hypot(z.x - this.x1, z.y - this.y1) <= this.splashRadius + z.def.radius * 0.4) {
         z.damage(g, this.dmg, { color: '#ffb84a' });
       }

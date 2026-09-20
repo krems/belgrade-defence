@@ -489,13 +489,92 @@ function drawCoin(ctx, p, t) {
   ctx.restore();
 }
 
+function drawTrap(ctx, p, t) {
+  const flash = p.activeT > 0;
+  const k = Math.max(0.25, p.hp / p.maxHp);
+  drawShadow(ctx, p.x, p.y + 10, 17, 6);
+  ctx.fillStyle = flash ? 'rgba(190,140,230,0.55)' : 'rgba(120,80,160,0.42)';
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y + 4, 22 * k + 4, 13 * k + 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = flash ? 'rgba(230,200,255,0.95)' : 'rgba(160,120,200,0.8)';
+  ctx.lineWidth = 1.6;
+  for (let i = 0; i < 6; i++) {
+    const a = (i * Math.PI * 2) / 6 + p.age * 0.15;
+    const x1 = p.x + Math.cos(a) * (20 * k + 3);
+    const y1 = p.y + 4 + Math.sin(a) * (11 * k + 2);
+    const x2 = p.x + Math.cos(a + 0.5) * 6;
+    const y2 = p.y + 4 + Math.sin(a + 0.5) * 4;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.quadraticCurveTo((x1 + x2) / 2 + Math.cos(a) * 5, (y1 + y2) / 2 - 3, x1, y1);
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(230,200,255,0.85)';
+  for (const [ox, oy] of [[-8, -2], [6, 1], [0, 6]]) {
+    ctx.beginPath();
+    ctx.arc(p.x + ox, p.y + 4 + oy, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawAA(ctx, p, t) {
+  const sway = Math.sin(p.age * 3 + p.x) * 1;
+  drawShadow(ctx, p.x, p.y + 14, 12, 4.5);
+  ctx.strokeStyle = '#3f7a2a';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y + 14);
+  ctx.quadraticCurveTo(p.x + sway, p.y + 4, p.x + sway * 0.5, p.y - 4);
+  ctx.stroke();
+  ctx.fillStyle = '#4f8a3a';
+  ctx.beginPath();
+  ctx.ellipse(p.x - 6, p.y + 12, 6, 3, -0.5, 0, Math.PI * 2);
+  ctx.ellipse(p.x + 6, p.y + 12, 6, 3, 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  const hx = p.x + sway * 0.5 - Math.cos(p.aim) * p.recoil * 4;
+  const hy = p.y - 10 - Math.sin(p.aim) * p.recoil * 4;
+  ctx.fillStyle = '#b0c46a';
+  ctx.strokeStyle = '#77873a';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.ellipse(p.x + sway * 0.5, p.y - 4, 8, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(p.aim);
+  ctx.fillStyle = '#7d8a52';
+  ctx.strokeStyle = '#54602f';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(-5, -2.4, 19, 4.8, 2.4);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#95a55c';
+  ctx.beginPath();
+  ctx.roundRect(-8, -4.5, 8, 9, 3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,213,74,0.7)';
+  ctx.lineWidth = 1.4;
+  const sweep = p.age * 2.2;
+  ctx.beginPath();
+  ctx.arc(p.x + sway * 0.5, p.y - 4, 13, sweep, sweep + 1.1);
+  ctx.stroke();
+}
+
 const PLANT_DRAWERS = {
   pea: drawPea,
   frost: drawFrost,
   mortar: drawMortar,
   nut: drawNut,
   cactus: drawCactus,
+  trap: drawTrap,
   coin: drawCoin,
+  aa: drawAA,
 };
 
 export function drawPlantShape(ctx, type, x, y, t, opts = {}) {
@@ -533,12 +612,30 @@ function drawZombie(ctx, z, t) {
   const k = dying ? Math.max(0, 1 - z.deathT / 0.8) : 1;
   const walk = z.state === 'walk' ? Math.sin(z.phase * 8) : Math.sin(z.phase * 20);
   const facing = z.dx >= 0 ? 1 : -1;
+  const flying = Boolean(z.def.flying);
+  const hover = flying ? 8 + Math.sin(z.phase * 4) * 3 : 0;
   ctx.save();
   ctx.globalAlpha = dying ? k : 1;
-  ctx.translate(z.x, z.y + (dying ? (1 - k) * 8 : 0));
+  ctx.translate(z.x, z.y - hover + (dying ? (1 - k) * 8 : 0));
   if (dying) ctx.rotate((1 - k) * 1.4 * -facing);
   ctx.scale(s, s);
-  drawShadow(ctx, 0, 16 / s, 13, 4.5);
+  drawShadow(ctx, 0, (16 + hover) / s, flying ? 9 : 13, 4.5);
+  if (flying && !dying) {
+    const flap = Math.sin(z.phase * 16) * 0.55;
+    ctx.fillStyle = 'rgba(232,240,255,0.8)';
+    ctx.strokeStyle = 'rgba(130,160,200,0.9)';
+    ctx.lineWidth = 1.2;
+    for (const sd of [-1, 1]) {
+      ctx.save();
+      ctx.translate(sd * 7, -10);
+      ctx.rotate(sd * (0.55 + flap));
+      ctx.beginPath();
+      ctx.ellipse(sd * 6, 0, 9, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
   const chewLunge = z.state === 'chew' ? Math.max(0, Math.sin(z.phase * 18)) * 3 : 0;
   ctx.translate(facing * chewLunge, 0);
   ctx.fillStyle = '#4a3a30';
@@ -546,7 +643,10 @@ function drawZombie(ctx, z, t) {
   ctx.ellipse(-4 + walk * 2, 13, 3.4, 4.6, 0, 0, Math.PI * 2);
   ctx.ellipse(4 - walk * 2, 13, 3.4, 4.6, 0, 0, Math.PI * 2);
   ctx.fill();
-  const bodyColor = z.type === 'boss' ? '#5c6e52' : z.type === 'armored' ? '#7d8a6a' : z.type === 'runner' ? '#8fa06a' : '#7d9e6a';
+  const bodyColor = z.type === 'boss' ? '#5c6e52'
+    : z.type === 'armored' ? '#7d8a6a'
+    : z.type === 'flyer' ? '#9a8fb8'
+    : z.type === 'runner' ? '#8fa06a' : '#7d9e6a';
   ctx.fillStyle = bodyColor;
   ctx.strokeStyle = 'rgba(35,45,28,0.85)';
   ctx.lineWidth = 1.8;
@@ -609,6 +709,18 @@ function drawZombie(ctx, z, t) {
       ctx.stroke();
     }
   }
+  if (z.type === 'flyer') {
+    ctx.fillStyle = 'rgba(200,190,235,0.9)';
+    ctx.strokeStyle = 'rgba(110,95,160,0.9)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-6, -18);
+    ctx.quadraticCurveTo(0, -30, 6, -18);
+    ctx.quadraticCurveTo(0, -21, -6, -18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
   if (z.type === 'boss') {
     ctx.fillStyle = '#c8b07a';
     for (let i = -1; i <= 1; i++) {
@@ -633,7 +745,7 @@ function drawZombie(ctx, z, t) {
   if (!dying && (z.hp < z.maxHp || z.type === 'boss')) {
     const w = z.type === 'boss' ? 52 : 26;
     const pct = Math.max(0, z.hp / z.maxHp);
-    drawHpBar(ctx, z.x, z.y - 24 * s - 8, w, pct, `hsl(${Math.round(pct * 110)},70%,45%)`);
+    drawHpBar(ctx, z.x, z.y - 24 * s - 8 - hover, w, pct, `hsl(${Math.round(pct * 110)},70%,45%)`);
   }
 }
 

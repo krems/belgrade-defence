@@ -152,9 +152,11 @@ function endScreen() {
 function plantTooltip(plant) {
   const def = plant.def;
   const lines = [`<b>${def.icon} ${def.name}</b>`];
-  if (plant.type === 'nut' || plant.type === 'cactus') lines.push(`<div class="tip-line">Прочность: ${Math.ceil(plant.hp)} / ${plant.maxHp}</div>`);
+  if (plant.type === 'nut' || plant.type === 'cactus' || plant.type === 'trap') lines.push(`<div class="tip-line">Прочность: ${Math.ceil(plant.hp)} / ${plant.maxHp}</div>`);
   if (def.dmg && def.rate) lines.push(`<div class="tip-line">Урон ${def.dmg} · ${def.rate}/с · радиус ${def.range}</div>`);
-  if (def.dps && def.slow) lines.push(`<div class="tip-line">Аура ${def.range}: замедление −40% и ${def.dps} урона/с</div>`);
+  if (def.antiAir) lines.push(`<div class="tip-line">Сбивает только летающих</div>`);
+  if (def.dps && def.slow && !def.onRoad) lines.push(`<div class="tip-line">Аура ${def.range}: замедление −40% и ${def.dps} урона/с</div>`);
+  if (def.dps && def.slow && def.onRoad) lines.push(`<div class="tip-line">Замедление −45% и ${def.dps} урона/с проходящим</div>`);
   if (def.splash) lines.push(`<div class="tip-line">Сплеш ${def.dmg} · зона ${def.splash} · КД ${def.cooldown} с</div>`);
   if (def.income) lines.push(`<div class="tip-line">+${def.income} 🪙 каждые ${def.every} с</div>`);
   lines.push(`<div class="tip-line">Лопата вернёт ${Math.floor(def.cost * 0.5)} 🪙</div>`);
@@ -213,7 +215,7 @@ function setupInput() {
   window.addEventListener('keydown', (e) => {
     audio.unlock();
     const k = e.key.toLowerCase();
-    if (k >= '1' && k <= '6') {
+    if (k >= '1' && k <= String(PLANT_KEYS.length)) {
       const type = PLANT_KEYS[Number(k) - 1];
       if (type) selectPlant(g, type);
     } else if (k === 's' || k === '0') {

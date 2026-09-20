@@ -1,4 +1,4 @@
-import { ECONOMY, PLANTS } from './balance.js';
+import { ECONOMY, PLANTS, WAVE_BONUS } from './balance.js';
 import { buildMap, cellKey } from './map.js';
 import { createPlant } from './entities/plant.js';
 import { spawnZombie } from './entities/zombie.js';
@@ -155,11 +155,15 @@ export function toggleSpeed(g) {
 function finishWave(g) {
   g.waveIndex += 1;
   g.projectiles = [];
+  g.coins += WAVE_BONUS;
+  g.earned += WAVE_BONUS;
+  fx.coin(g, g.map.width / 2, g.map.height / 2 - 40);
+  fx.text(g, g.map.width / 2, g.map.height / 2 - 60, '+' + WAVE_BONUS + ' 🪙 за волну', { color: '#ffd54a', size: 16 });
   if (!g.level.endless && g.waveIndex >= g.waves.length) {
     win(g);
   } else {
     g.screen = 'planning';
-    toast(g, 'Волна отбита! Расставьтесь и начните следующую');
+    toast(g, 'Волна отбита! +' + WAVE_BONUS + ' монет за волну');
     audio.coin();
   }
 }

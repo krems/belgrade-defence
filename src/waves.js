@@ -25,6 +25,14 @@ export function endlessWaveAt(index) {
       delay: 8,
     });
   }
+  if (n >= 8) {
+    entries.push({
+      type: 'flyer',
+      count: Math.min(12, 1 + Math.floor((n - 7) / 2)),
+      every: Math.max(1.2, Math.round((every + 0.4) * 100) / 100),
+      delay: 6,
+    });
+  }
   if (n % 10 === 0) {
     entries.unshift({ type: 'boss', count: Math.floor(n / 10), every: 6, delay: 10 });
   }

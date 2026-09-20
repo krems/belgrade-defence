@@ -103,7 +103,7 @@ export class Zombie {
     const p = map.posAt(front);
     const key = map.keyAt(p.x, p.y);
     let blocker = null;
-    if (key) {
+    if (key && !this.def.flying) {
       const plant = g.occupancy.get(key);
       if (plant && !plant.dead && plant.type === 'nut' && plant.hp > 0) blocker = plant;
     }

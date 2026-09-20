@@ -45,7 +45,7 @@ export class PeaPlant extends Plant {
     let best = Infinity;
     const range = this.def.range * g.map.cell;
     for (const z of g.zombies) {
-      if (z.dead || z.state === 'die') continue;
+      if (z.dead || z.state === 'die' || z.def.flying) continue;
       const d = Math.hypot(z.x - this.x, z.y - this.y);
       if (d <= range && d < best) { best = d; target = z; }
     }
@@ -78,7 +78,7 @@ export class FrostPlant extends Plant {
     this.pulse += dt;
     const r = this.def.range * g.map.cell;
     for (const z of g.zombies) {
-      if (z.dead || z.state === 'die') continue;
+      if (z.dead || z.state === 'die' || z.def.flying) continue;
       if (Math.hypot(z.x - this.x, z.y - this.y) <= r) {
         z.applySlow(1 - this.def.slow, this.def.slowDuration);
         z.softDamage(g, this.def.dps * dt, '#8fd8ff');
@@ -104,7 +104,7 @@ export class MortarPlant extends Plant {
     const dMin = this.def.rangeMin * g.map.cell;
     const dMax = this.def.rangeMax * g.map.cell;
     for (const z of g.zombies) {
-      if (z.dead || z.state === 'die') continue;
+      if (z.dead || z.state === 'die' || z.def.flying) continue;
       const d = Math.hypot(z.x - this.x, z.y - this.y);
       if (d >= dMin && d <= dMax && d < best) { best = d; target = z; }
     }
@@ -145,7 +145,7 @@ export class CactusPlant extends Plant {
     this.activeT = Math.max(0, this.activeT - dt);
     let hitAny = false;
     for (const z of g.zombies) {
-      if (z.dead || z.state === 'die') continue;
+      if (z.dead || z.state === 'die' || z.def.flying) continue;
       if (g.map.keyAt(z.x, z.y) === this.key) {
         hitAny = true;
         const dmg = this.def.dps * dt;
@@ -156,6 +156,70 @@ export class CactusPlant extends Plant {
     if (hitAny) {
       this.activeT = 0.2;
       if (this.hp <= 0) this.kill(g);
+    }
+  }
+}
+
+export class TrapPlant extends Plant {
+  constructor(col, row, map) {
+    super('trap', col, row, map);
+    this.activeT = 0;
+  }
+  update(g, dt) {
+    this.age += dt;
+    this.activeT = Math.max(0, this.activeT - dt);
+    let hitAny = false;
+    for (const z of g.zombies) {
+      if (z.dead || z.state === 'die' || z.def.flying) continue;
+      if (g.map.keyAt(z.x, z.y) === this.key) {
+        hitAny = true;
+        z.applySlow(1 - this.def.slow, this.def.slowDuration);
+        const dmg = this.def.dps * dt;
+        z.damage(g, dmg, { color: '#c9a2e8', silent: true });
+        this.hp -= dmg;
+      }
+    }
+    if (hitAny) {
+      this.activeT = 0.2;
+      if (this.hp <= 0) this.kill(g);
+    }
+  }
+}
+
+export class AaPlant extends Plant {
+  constructor(col, row, map) {
+    super('aa', col, row, map);
+    this.cd = 0.4;
+    this.aim = -0.3;
+    this.recoil = 0;
+  }
+  update(g, dt) {
+    this.age += dt;
+    this.cd -= dt;
+    this.recoil = Math.max(0, this.recoil - dt * 8);
+    let target = null;
+    let best = Infinity;
+    const range = this.def.range * g.map.cell;
+    for (const z of g.zombies) {
+      if (z.dead || z.state === 'die' || !z.def.flying) continue;
+      const d = Math.hypot(z.x - this.x, z.y - this.y);
+      if (d <= range && d < best) { best = d; target = z; }
+    }
+    if (target) {
+      const want = Math.atan2(target.y - this.y, target.x - this.x);
+      let diff = want - this.aim;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      this.aim += diff * Math.min(1, dt * 14);
+      if (this.cd <= 0) {
+        this.cd = 1 / this.def.rate;
+        this.recoil = 1;
+        const sx = this.x + Math.cos(this.aim) * 14;
+        const sy = this.y - 10 + Math.sin(this.aim) * 14;
+        g.projectiles.push(new Bullet(sx, sy, this.aim, this.def.dmg, target, 'flyer'));
+        fx.splat(g, sx, sy, '#ffd54a');
+        audio.shoot();
+      }
     }
   }
 }
@@ -188,7 +252,9 @@ const FACTORY = {
   mortar: MortarPlant,
   nut: NutPlant,
   cactus: CactusPlant,
+  trap: TrapPlant,
   coin: CoinPlant,
+  aa: AaPlant,
 };
 
 export function createPlant(type, col, row, map) {
