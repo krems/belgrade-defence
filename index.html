@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Belgrade Defence</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-screen="menu">
+  <div id="app">
+    <header id="hud">
+      <div class="hud-group" id="hud-stats">
+        <div class="stat" id="stat-coins" title="Монеты"><span class="icon">🪙</span><span id="coins">0</span></div>
+        <div class="stat" id="stat-wave" title="Волна"><span class="icon">🌊</span><span id="wave">—</span></div>
+        <div class="stat" id="stat-hearts" title="HP города"></div>
+      </div>
+      <div class="hud-group" id="hud-controls">
+        <button id="btn-start" class="btn primary">▶ Начать волну</button>
+        <button id="btn-pause" class="btn" title="Пауза (P или Пробел)">⏸</button>
+        <button id="btn-speed" class="btn" title="Скорость">x1</button>
+        <button id="btn-mute" class="btn" title="Звук (M)">🔊</button>
+        <button id="btn-menu" class="btn" title="В меню">☰</button>
+      </div>
+    </header>
+    <main id="stage">
+      <canvas id="game" width="832" height="576"></canvas>
+      <div id="toasts"></div>
+      <div id="tooltip" hidden></div>
+    </main>
+    <footer id="shop"></footer>
+    <div id="overlay" hidden>
+      <div id="overlay-card"></div>
+    </div>
+  </div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
