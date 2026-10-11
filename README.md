@@ -21,7 +21,9 @@
 
 ## Играть без установки
 
-Скачай файл **`belgrade-defence.html`** из раздела [**Releases → Latest**](https://github.com/krems/belgrade-defence/releases/latest) и открой его двойным кликом в браузере.
+Играй сразу в браузере: **<https://krems.github.io/belgrade-defence/>**
+
+Либо скачай файл **`belgrade-defence.html`** из раздела [**Releases → Latest**](https://github.com/krems/belgrade-defence/releases/latest) и открой его двойным кликом в браузере.
 
 Это вся игра в одном файле: ни Node.js, ни npm, ни консоли не нужно. Прогресс в такой версии не сохраняется (нет сервера) — для сохранения запускай из исходников ниже.
 

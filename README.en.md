@@ -21,7 +21,9 @@ A browser **wave-based tower defense** in the spirit of "Plants vs. Zombies": zo
 
 ## Play without installing anything
 
-Download **`belgrade-defence.html`** from [**Releases → Latest**](https://github.com/krems/belgrade-defence/releases/latest) and open it by double-clicking it in your browser.
+Play right in your browser: **<https://krems.github.io/belgrade-defence/>**
+
+Or download **`belgrade-defence.html`** from [**Releases → Latest**](https://github.com/krems/belgrade-defence/releases/latest) and open it by double-clicking it in your browser.
 
 That single file is the whole game: no Node.js, no npm, no console required. Progress is not saved in this version (there is no server) — run it from source below to keep progress.
 
