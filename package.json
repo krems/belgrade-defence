@@ -1,0 +1,14 @@
+{
+  "name": "belgrade-defence",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Belgrade Defence — браузерная wave-based tower defense (растения против зомби) на vanilla JS + Canvas.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "build": "node tools/build-standalone.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

@@ -1,4 +1,5 @@
 import { GRID } from './balance.js';
+import { getTheme } from './themes.js';
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -98,12 +99,16 @@ export function buildMap(level) {
     },
   };
 
-  map.decor = buildDecor(map, level.seed);
+  map.decor = buildDecor(map, level);
   return map;
 }
 
-function buildDecor(map, seed) {
-  const rand = mulberry32(seed);
+function buildDecor(map, level) {
+  const theme = getTheme(level);
+  const cfg = theme.decor;
+  const kinds = Object.keys(cfg.weights);
+  const total = kinds.reduce((s, k) => s + cfg.weights[k], 0);
+  const rand = mulberry32(level.seed);
   const decor = [];
   for (let r = 0; r < map.rows; r++) {
     for (let c = 0; c < map.cols; c++) {
@@ -112,17 +117,17 @@ function buildDecor(map, seed) {
       const key = cellKey(c, r);
       if (map.roadCells.has(key) || map.slotCells.has(key)) continue;
       const roll = rand();
-      if (roll < 0.42) continue;
+      if (roll < cfg.density) continue;
       const center = map.cellCenter(c, r);
       const x = center.x + (rand() - 0.5) * 30;
       const y = center.y + (rand() - 0.5) * 30;
-      if (roll < 0.62) {
-        decor.push({ kind: 'bush', x, y, s: 0.7 + rand() * 0.5, hue: rand() });
-      } else if (roll < 0.8) {
-        decor.push({ kind: 'rock', x, y, s: 0.6 + rand() * 0.6, rot: rand() * Math.PI });
-      } else {
-        decor.push({ kind: 'tuft', x, y, s: 0.7 + rand() * 0.6, rot: rand() * Math.PI });
+      let pick = rand() * total;
+      let kind = kinds[kinds.length - 1];
+      for (const k of kinds) {
+        pick -= cfg.weights[k];
+        if (pick <= 0) { kind = k; break; }
       }
+      decor.push({ kind, x, y, s: 0.7 + rand() * 0.5, hue: rand(), rot: rand() * Math.PI });
     }
   }
   const pebbles = [];

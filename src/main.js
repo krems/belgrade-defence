@@ -6,6 +6,7 @@ import {
   selectPlant, selectShovel, cancelSelection, placeAt, digAt, selectInfo,
 } from './state.js';
 import { render, syncBackground } from './render.js';
+import { getTheme } from './themes.js';
 import { audio } from './audio.js';
 import { initHud, updateHud, showTooltip, hideTooltip } from './ui/hud.js';
 import { initShop, updateShop } from './ui/shop.js';
@@ -13,6 +14,7 @@ import { initScreens, showLevelSelect, showPause, showEnd, hideOverlay, flushToa
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+const stage = document.getElementById('stage');
 
 const EMPTY_REC = { completed: false, bestWave: 0, bestKills: 0 };
 
@@ -23,6 +25,9 @@ let saveFailedShown = false;
 
 const levelRec = (id) => (progress.levels && progress.levels[id]) || EMPTY_REC;
 
+// В собранном одиночном HTML (file://) сервера прогресса нет — не дёргаем API.
+const NO_SERVER = typeof location !== 'undefined' && location.protocol === 'file:';
+
 function toLogic(e) {
   const rect = canvas.getBoundingClientRect();
   return {
@@ -32,6 +37,7 @@ function toLogic(e) {
 }
 
 async function loadProgress() {
+  if (NO_SERVER) return;
   try {
     const res = await fetch('/api/progress');
     if (res.ok) {
@@ -64,6 +70,7 @@ function mergeProgress() {
 }
 
 async function persistProgress() {
+  if (NO_SERVER) return;
   try {
     const res = await fetch('/api/progress', {
       method: 'POST',
@@ -110,6 +117,7 @@ const screensApi = {
 function startLevel(index) {
   g = createGame(LEVELS[index], index);
   endShown = false;
+  stage.style.background = getTheme(g.level).stage;
   syncBackground(canvas, g.map);
   hideOverlay();
   hideTooltip();

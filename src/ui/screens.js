@@ -1,5 +1,7 @@
 import { LEVELS } from '../config.js';
 import { PLANTS } from '../balance.js';
+import { buildMap } from '../map.js';
+import { bakeBackground } from '../render.js';
 
 let onActions = null;
 
@@ -57,16 +59,29 @@ function levelCardHtml(progress, level, i) {
     : '';
   return `
     <button class="${cls.join(' ')}" data-i="${i}" ${unlocked ? '' : 'disabled'}>
-      <div class="lvl-head">
-        <span class="lvl-num">${level.endless ? '∞' : i + 1}</span>
-        <span class="lvl-name">${level.name}</span>
-        <span class="lvl-mark">${mark}</span>
+      <canvas class="lvl-preview" width="192" height="132" aria-hidden="true"></canvas>
+      <div class="lvl-body">
+        <div class="lvl-head">
+          <span class="lvl-num">${level.endless ? '∞' : i + 1}</span>
+          <span class="lvl-name">${level.name}</span>
+          <span class="lvl-mark">${mark}</span>
+        </div>
+        <div class="lvl-meta">${level.blurb}</div>
+        <div class="lvl-tags">${total} волн · ${icons}</div>
+        ${best}
       </div>
-      <div class="lvl-meta">${level.blurb}</div>
-      <div class="lvl-tags">${total} волн · ${icons}</div>
-      ${best}
     </button>
   `;
+}
+
+function paintPreviews(root) {
+  for (const cv of root.querySelectorAll('.lvl-preview')) {
+    const btn = cv.closest('.level-card');
+    const i = Number(btn && btn.dataset.i);
+    const level = LEVELS[i];
+    if (!level) continue;
+    bakeBackground(cv.getContext('2d'), buildMap(level), cv.width, cv.height);
+  }
 }
 
 export function showLevelSelect(progress) {
@@ -87,6 +102,7 @@ export function showLevelSelect(progress) {
     </div>
   `;
   overlay().hidden = false;
+  paintPreviews(el);
   for (const btn of el.querySelectorAll('.level-card:not(.locked)')) {
     btn.addEventListener('click', () => onActions.selectLevel(Number(btn.dataset.i)));
   }
